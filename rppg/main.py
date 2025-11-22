@@ -632,9 +632,9 @@ class Model:
                     lock1.acquire()
                 dt = ts - self.face_detection_chain_ts
                 self.face_detection_chain_ts = ts
+                self.__update_frame_box(img, ts, r, dt)
                 lock2.release()
                 self.face_detection_semaphore.release()
-                self.__update_frame_box(img, ts, r, dt)
             except:
                 import sys
                 sys.excepthook(*sys.exc_info())
