@@ -10,6 +10,7 @@ logger.setLevel(logging.INFO)
 
 from .models import * 
 
+from functools import partial
 import onnxruntime as ort
 import av
 import heartpy as hp
@@ -429,7 +430,8 @@ class Model:
         self.fps = meta['fps'] 
         self.input = meta['input'] 
         self.face_mode = 'Near'
-        self.face_detection_thread = max(os.cpu_count()//2, 1)
+        self.face_detection_threads = max(os.cpu_count()//2, 1)
+        self.face_resampling_threads = max(os.cpu_count()//2, 1)
         self.face_detect_per_n = 5
         self.call = func 
         self.run = None 
@@ -454,8 +456,10 @@ class Model:
         self.statistic = {'frames':0, 'key':0, 'skipped':0, 'filled':0, 'dependent':0, 'null':0}
         self.sp = threading.Semaphore(0)
         self.frame_lock = threading.Lock()
-        self.face_detection_semaphore = threading.Semaphore(self.face_detection_thread+self.frame_buffer_size)
-        self.face_detection_pool = ThreadPoolExecutor(max_workers=self.face_detection_thread)
+        self.face_detection_semaphore = threading.Semaphore(self.face_detection_threads+self.frame_buffer_size)
+        self.face_detection_pool = ThreadPoolExecutor(max_workers=self.face_detection_threads)
+        self.face_resampling_pool = ThreadPoolExecutor(max_workers=self.face_resampling_threads)
+        self.face_detection_task = None
         self.face_detection_chain_lock = None
         self.face_detection_chain_ts = 0
         self.face_detect_count = 0
@@ -471,6 +475,7 @@ class Model:
                     if len(self.face_buff)<self.meta['input'][0]:
                         continue 
                     face_imgs = self.face_buff[:self.meta['input'][0]]
+                    face_imgs = list(self.face_resampling_pool.map(lambda x:(x[0](), x[1]), face_imgs))
                     ipt = np.array([i[0] for i in face_imgs])
                     msk = np.array([i[1] for i in face_imgs], bool)
                     r, self.state = self.call(ipt, self.state)
@@ -486,6 +491,7 @@ class Model:
                             v.extend(r[k])
                 if len(self.face_buff):
                     face_imgs = self.face_buff + [self.face_buff[-1]]*(self.meta['input'][0]-len(self.face_buff))
+                    face_imgs = list(self.face_resampling_pool.map(lambda x:(x[0](), x[1]), face_imgs))
                     ipt = np.array([i[0] for i in face_imgs])
                     msk = np.array([i[1] for i in face_imgs], bool)
                     r, _ = self.call(ipt, self.state)
@@ -506,9 +512,12 @@ class Model:
             if exc_type:
                 raise exc_value
         finally:
+            if self.face_detection_task is not None:
+                self.face_detection_task.result()
             self.alive = False
             self.sp.release()
             self.ift.join()
+            self.wait_completion()
             self.face_detection_pool.shutdown()
                 
     def collect_signals(self, start=None, end=None):
@@ -591,16 +600,21 @@ class Model:
         return None
     
     def update_face(self, face_img, ts=None, hasface=True):
+        if face_img is not None:
+            resolution = self.input[1:3]
+            face_img = cv2.resize(face_img, resolution, interpolation=cv2.INTER_AREA)
+            face_img = partial(lambda x:x, face_img) # Instant calculation (realtime)
+        self.update_face_resized(face_img, ts=ts, hasface=hasface)
+    
+    def update_face_resized(self, face_img, ts=None, hasface=True):
         if face_img is None:
             if not hasface:
-                face_img = np.zeros(self.input[1:], dtype='uint8')
+                face_img = lambda :np.zeros(self.input[1:], dtype='uint8')
                 self.statistic['null'] += 1
             else:
                 return
         if ts is None:
             ts = time.time()
-        resolution = self.input[1:3]
-        face_img = cv2.resize(face_img, resolution, interpolation=cv2.INTER_AREA)
         n = 0
         while (self.n_frame-0.3)/self.fps<=ts-(self.ts+[ts])[0]:
             with self.frame_lock:
@@ -618,7 +632,7 @@ class Model:
     def update_frame(self, frame, ts=None):
         if ts is None:
             ts = time.time()
-        def detect(n, img, lock1, lock2, ts):
+        def detect(n, img, lock1, lock2, ts, dt):
             try:
                 if not n%self.face_detect_per_n:
                     r = self.detector.detect(img)
@@ -630,29 +644,31 @@ class Model:
                     r = 'skipped'
                 if lock1 is not None:
                     lock1.acquire()
-                dt = ts - self.face_detection_chain_ts
-                self.face_detection_chain_ts = ts
-                self.__update_frame_box(img, ts, r, dt)
-                lock2.release()
-                self.face_detection_semaphore.release()
+                box = self.__update_Kalman(img, ts, r, dt)
+                r = self.__update_frame_box(img, ts, box, dt)
+                self.update_face_resized(*r)
             except:
                 import sys
                 sys.excepthook(*sys.exc_info())
+            finally:
+                lock2.release()
+                self.face_detection_semaphore.release()
         lock1 = self.face_detection_chain_lock 
         self.face_detection_chain_lock = threading.Lock()
         self.face_detection_chain_lock.acquire()
         lock2 = self.face_detection_chain_lock 
         self.face_detection_semaphore.acquire()
-        self.face_detection_pool.submit(lambda:detect(self.face_detect_count, frame, lock1, lock2, ts))
+        dt = ts - self.face_detection_chain_ts
+        self.face_detection_chain_ts = ts
+        self.face_detection_task = self.face_detection_pool.submit(lambda:detect(self.face_detect_count, frame, lock1, lock2, ts, dt))
         self.face_detect_count += 1
-        
-    def __update_frame_box(self, frame, ts=None, box=np.array([]), dt=1/30):
-        self.frame = frame
+    
+    def __update_Kalman(self, frame, ts, box=np.array([]), dt=1/30):
         if not isinstance(box, str):
             if len(box):
                 box[box<0] = 0
                 self.hasface = ts + 1
-            elif self.box is None or ts+1-self.hasface>1 or (self.rbox[:,0]<=np.array(0.05)*frame.shape[:2]).any() or (self.rbox[:,1]>=np.array(0.95)*frame.shape[:2]).any():
+            elif self.box is None or ts+1-self.hasface>1 or (self.rbox[:,0]<=np.array(0.05)*self.input[1:3]).any() or (self.rbox[:,1]>=np.array(0.95)*self.input[1:3]).any():
                 self.hasface = 0
             if len(box):
                 if self.boxkf is None:
@@ -662,13 +678,20 @@ class Model:
                 self.rbox = box
                 if self.box is None or max(np.abs((np.mean(kbox, axis=1)-np.mean(self.box, axis=1)))/np.mean(self.box, axis=0))>0.02:
                     self.box = kbox
-        if self.box is not None:
-            img = np.ascontiguousarray(frame[slice(*self.box[0]), slice(*self.box[1])])
+        return self.box
+    
+    def __update_frame_box(self, frame, ts=None, box=np.array([]), dt=1/30):
+        self.frame = frame
+        if box is not None:
+            img = np.ascontiguousarray(frame[slice(*box[0]), slice(*box[1])])
         else:
             img = None 
         if self.preview_lock.locked():
             self.preview_lock.release()
-        self.update_face(img, ts, self.hasface)
+        if img is not None:
+            resolution = self.input[1:3] # Delayed calculation (parallel)
+            img = partial(cv2.resize, img, resolution, interpolation=cv2.INTER_AREA)
+        return img, ts, self.hasface
     
     def video_capture(self, vid_path=0):
         if self.run is not None:
