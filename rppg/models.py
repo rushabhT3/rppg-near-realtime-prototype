@@ -1060,11 +1060,11 @@ class Mamba(layers.Layer):
         self.expand = expand
 
     def call(self, x):
-        batch_size, seq_len, dimension = x.shape
+        (batch_size, seq_len, dimension) = x.shape
 
         x_and_res = self.in_projection(x)
 
-        x, res = ops.split(x_and_res, [self.internal_dim], axis=-1)
+        (x, res) = ops.split(x_and_res, [self.internal_dim], axis=-1)
 
         x = self.conv1d(x)[:, :seq_len]
 
@@ -1074,14 +1074,14 @@ class Mamba(layers.Layer):
         return self.out_projection(y)
 
     def ssm(self, x):
-        d_in, n = self.A_log.shape
+        (d_in, n) = self.A_log.shape
 
         A = -ops.exp(ops.cast(self.A_log, "float32"))  # shape -> (d_in, n)
         D = ops.cast(self.D, "float32")
 
         x_dbl = self.x_projection(x)  # shape -> (batch, seq_len, delta_t_rank + 2*n)
 
-        delta, B, C = ops.split(
+        (delta, B, C) = ops.split(
             x_dbl, [self.delta_t_rank, self.delta_t_rank + n], axis=-1
         )
 
