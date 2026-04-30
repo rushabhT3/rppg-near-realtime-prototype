@@ -14,9 +14,12 @@ export const useRPPGSession = () => {
   
   const wsRef = useRef<WebSocket | null>(null);
 
-  const connectWebSocket = useCallback((id: string) => {
+  const connectWebSocket = useCallback((id: string, objectName?: string) => {
     setStatus('processing');
-    const ws = new WebSocket(`${WS_URL}/ws/process/${id}`);
+    const wsUrl = objectName
+      ? `${WS_URL}/ws/process/${id}?object_name=${encodeURIComponent(objectName)}`
+      : `${WS_URL}/ws/process/${id}`;
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onmessage = (event) => {
@@ -52,10 +55,33 @@ export const useRPPGSession = () => {
     setFinalResult(null);
     setProgress(0);
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
+      // Try GCS signed URL upload first (for Cloud Run)
+      const urlResponse = await fetch(
+        `${API_URL}/api/upload-url?filename=${encodeURIComponent(file.name)}`
+      );
+
+      if (urlResponse.ok) {
+        const { session_id, upload_url, object_name } = await urlResponse.json();
+
+        // Upload directly to GCS via signed URL
+        const uploadResponse = await fetch(upload_url, {
+          method: 'PUT',
+          body: file,
+          headers: { 'Content-Type': file.type || 'video/mp4' },
+        });
+
+        if (!uploadResponse.ok) throw new Error('GCS upload failed');
+
+        setSessionId(session_id);
+        connectWebSocket(session_id, object_name);
+        return;
+      }
+
+      // Fallback: direct upload (for local dev)
+      const formData = new FormData();
+      formData.append('file', file);
+
       const response = await fetch(`${API_URL}/api/upload`, {
         method: 'POST',
         body: formData,
