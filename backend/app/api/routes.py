@@ -2,6 +2,7 @@ import os
 import uuid
 import shutil
 import logging
+from datetime import datetime
 
 from fastapi import UploadFile, File, WebSocket, WebSocketDisconnect
 
@@ -14,6 +15,22 @@ logger = get_logger()
 
 def setup_routes(app):
     """Register all routes with the FastAPI application."""
+
+    @app.get("/health")
+    async def health_check():
+        """Health check endpoint for monitoring and load balancers."""
+        return {
+            "status": "healthy",
+            "service": "vitalis-rppg",
+            "version": settings.APP_VERSION,
+            "timestamp": datetime.utcnow().isoformat(),
+            "uptime": "running",
+        }
+
+    @app.get("/ping")
+    async def ping():
+        """Simple ping endpoint for basic connectivity test."""
+        return {"pong": True, "timestamp": datetime.utcnow().isoformat()}
 
     @app.post("/api/upload")
     async def upload(file: UploadFile = File(...)):

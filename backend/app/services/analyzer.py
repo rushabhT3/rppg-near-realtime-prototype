@@ -38,9 +38,15 @@ class SignalAnalyzer:
         self._initialized = True
 
     def _initialize_model(self) -> Optional[rppg.Model]:
-        logger.info(f"Initializing rPPG Engine: {self.model_name} (JIT Warming up)...")
+        logger.info(f"Initializing rPPG Engine: {self.model_name}")
+        logger.info("Loading neural network model...")
+        logger.info("JIT compilation in progress...")
         try:
-            return rppg.Model(self.model_name)
+            model = rppg.Model(self.model_name)
+            logger.info("✅ Model loaded successfully!")
+            logger.info(f"Model FPS: {model.fps}")
+            logger.info("🔥 Engine is ready for processing!")
+            return model
         except Exception as e:
             logger.error(f"Critical Engine Failure: {e}")
             return None

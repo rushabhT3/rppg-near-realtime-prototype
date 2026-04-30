@@ -61,7 +61,9 @@ class VideoProcessor:
                             await asyncio.sleep(0.5)
 
                     if ts >= current_window_start + self.chunk_size_sec:
-                        await self._process_window(current_window_start, ts, session_start)
+                        await self._process_window(
+                            current_window_start, ts, session_start
+                        )
                         current_window_start = ts
 
                     frame_idx += 1
@@ -109,7 +111,9 @@ class VideoProcessor:
             await self._process_window(last_start, last_ts, session_start)
 
         # Wait for AI inference to complete for full video
-        logger.info(f"Awaiting final AI completion ({model.n_signal}/{total_frames})...")
+        logger.info(
+            f"Awaiting final AI completion ({model.n_signal}/{total_frames})..."
+        )
         final_wait_start = time.time()
         while model.n_signal < total_frames - 10:
             if time.time() - final_wait_start > 60.0:

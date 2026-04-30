@@ -1,17 +1,18 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.api.routes import setup_routes
 
-# Setup logging
 setup_logging()
 
 # Create FastAPI application
 app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION)
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ALLOWED_ORIGINS,
@@ -20,7 +21,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register routes
 setup_routes(app)
 
 
