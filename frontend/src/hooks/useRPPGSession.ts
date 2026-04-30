@@ -1,6 +1,9 @@
 import { useState, useRef, useCallback } from 'react';
 import type { ChunkData, FinalResult, AppStatus } from '../types';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
+
 export const useRPPGSession = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [chunks, setChunks] = useState<ChunkData[]>([]);
@@ -13,7 +16,7 @@ export const useRPPGSession = () => {
 
   const connectWebSocket = useCallback((id: string) => {
     setStatus('processing');
-    const ws = new WebSocket(`ws://localhost:8000/ws/process/${id}`);
+    const ws = new WebSocket(`${WS_URL}/ws/process/${id}`);
     wsRef.current = ws;
 
     ws.onmessage = (event) => {
@@ -53,7 +56,7 @@ export const useRPPGSession = () => {
     formData.append('file', file);
 
     try {
-      const response = await fetch('http://localhost:8000/api/upload', {
+      const response = await fetch(`${API_URL}/api/upload`, {
         method: 'POST',
         body: formData,
       });

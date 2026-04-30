@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Wind, ShieldCheck, Zap } from 'lucide-react';
+import { Heart, Wind, ShieldCheck } from 'lucide-react';
 
 // Modules
 import { Header } from './components/common/Header';
@@ -44,27 +44,6 @@ const App: React.FC = () => {
             error={error} 
             onUpload={uploadVideo} 
           />
-
-          {/* Performance Panel */}
-          <div className="card">
-            <h3 className="card-title">
-              <Zap size={20} /> Performance
-            </h3>
-            <table>
-              <thead>
-                <tr>
-                  <th style={{ textAlign: 'left', width: '45%' }}>Value</th>
-                  <th style={{ textAlign: 'left' }}>Parameter</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="row-highlight">{finalResult?.total_processing_time_sec.toFixed(1) || '—'} <small>s</small></td>
-                  <td>Total Time</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
 
           {/* Final Analysis Summary */}
           <FinalSummary data={finalResult} />

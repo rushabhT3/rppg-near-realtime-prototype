@@ -23,7 +23,9 @@ export const Header: React.FC<HeaderProps> = ({ isLive }) => {
           </div>
         )}
         <div className="card" style={{ padding: '0.5rem 1rem', borderRadius: '8px' }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600 }}>VITALIS-CORE-X</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600 }}>
+            {import.meta.env.VITE_CORE_NAME || 'VITALIS-CORE-X'}
+          </span>
         </div>
       </div>
     </header>
