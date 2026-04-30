@@ -7,10 +7,10 @@
   /* Aventura Inspired Palette */
   --bg-main: #fcfdfd;
   --bg-section: #ffffff;
-  --primary: #007c89; /* Sophisticated Teal */
+  --primary: #007c89;
   --primary-light: #e6f2f3;
-  --secondary: #1a3c40; /* Deep Forest/Navy */
-  --accent: #d4a373; /* Warm Sand */
+  --secondary: #1a3c40;
+  --accent: #d4a373;
   --text-main: #1e293b;
   --text-muted: #475569;
   --border: #e2e8f0;
@@ -27,20 +27,27 @@
   padding: 0;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background-color: var(--bg-main);
   color: var(--text-main);
   font-family: var(--font-body);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .app-container {
   max-width: 1400px;
   margin: 0 auto;
   padding: 3rem 2rem;
+  animation: fadeInUp 0.6s ease-out;
 }
 
+/* ─── Header ─── */
 .header {
   display: flex;
   justify-content: space-between;
@@ -73,24 +80,26 @@ body {
   margin-top: 4px;
 }
 
+/* ─── Layout ─── */
 .main-grid {
   display: grid;
   grid-template-columns: 380px 1fr;
   gap: 3rem;
 }
 
-/* Elegant Cards */
+/* ─── Cards (Aventura-style elevated surface) ─── */
 .card {
   background: var(--bg-section);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 2rem;
   box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.3s ease;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .card:hover {
   box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 .card-title {
@@ -101,8 +110,22 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  position: relative;
+  padding-bottom: 0.75rem;
 }
 
+.card-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 40px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+}
+
+/* ─── Stats Grid ─── */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -113,6 +136,20 @@ body {
 .stat-card {
   text-align: center;
   padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 3px;
+  background: var(--accent);
+  border-radius: 0 0 3px 3px;
 }
 
 .stat-label {
@@ -122,6 +159,9 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .stat-value {
@@ -138,7 +178,7 @@ body {
   margin-left: 0.25rem;
 }
 
-/* Modern Upload Interface */
+/* ─── Upload Interface ─── */
 .upload-zone {
   height: 220px;
   background: var(--bg-main);
@@ -150,12 +190,13 @@ body {
   justify-content: center;
   gap: 1.25rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s ease;
 }
 
 .upload-zone:hover {
   border-color: var(--primary);
   background: var(--primary-light);
+  transform: scale(1.01);
 }
 
 .upload-icon {
@@ -164,7 +205,22 @@ body {
   color: var(--primary);
 }
 
-/* Refined Table */
+/* ─── Progress Bar ─── */
+.progress-track {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* ─── Table ─── */
 table {
   width: 100%;
   border-collapse: separate;
@@ -186,17 +242,22 @@ td {
   background: var(--bg-main);
   color: var(--text-main);
   font-size: 0.9rem;
+  transition: background 0.2s ease;
 }
 
 td:first-child { border-radius: 8px 0 0 8px; }
 td:last-child { border-radius: 0 8px 8px 0; }
+
+tr:hover td {
+  background: var(--primary-light);
+}
 
 .row-highlight {
   color: var(--primary);
   font-weight: 700;
 }
 
-/* Live Analysis Indicator */
+/* ─── Live Pulse Indicator ─── */
 .pulse-indicator {
   display: flex;
   align-items: center;
@@ -207,6 +268,7 @@ td:last-child { border-radius: 0 8px 8px 0; }
   border-radius: 30px;
   font-size: 0.75rem;
   font-weight: 700;
+  letter-spacing: 0.05em;
 }
 
 .dot {
@@ -223,13 +285,125 @@ td:last-child { border-radius: 0 8px 8px 0; }
   100% { opacity: 0.2; }
 }
 
-/* Charts */
+/* ─── Charts ─── */
 .chart-container {
   height: 350px;
   padding-top: 1rem;
 }
 
+/* ─── Entrance Animations ─── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── Chunk Table ─── */
+.chunk-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.chunk-table th {
+  padding: 0.75rem 0.6rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-main);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+
+.chunk-table td {
+  padding: 0.7rem 0.6rem;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+}
+
+.chunk-table tbody tr:hover td {
+  background: var(--primary-light);
+}
+
+/* ─── Chunk Expanded Detail ─── */
+.chunk-expanded-row td {
+  background: var(--bg-main) !important;
+  border-bottom: 2px solid var(--primary);
+}
+
+.chunk-detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  padding: 1.25rem 1rem;
+  animation: fadeInUp 0.25s ease-out;
+}
+
+.chunk-detail-section-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 0.6rem;
+  padding-left: 0.4rem;
+  border-left: 3px solid var(--accent);
+}
+
+.chunk-detail-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.chunk-detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.3rem 0.4rem;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.chunk-detail-item:hover {
+  background: var(--primary-light);
+}
+
+.chunk-detail-value {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 0.85rem;
+}
+
+.chunk-detail-unit {
+  font-weight: 400;
+  opacity: 0.6;
+  font-size: 0.7rem;
+  margin-left: 2px;
+}
+
+.chunk-detail-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ─── Responsive ─── */
 @media (max-width: 1100px) {
   .main-grid { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: 1fr; }
+  .chunk-detail { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 600px) {
+  .chunk-detail { grid-template-columns: 1fr; }
+  .chunk-table th,
+  .chunk-table td { padding: 0.5rem 0.4rem; font-size: 0.78rem; }
 }
