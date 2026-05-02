@@ -68,7 +68,9 @@ export const useRPPGSession = () => {
     setStatus('uploading');
     setError(null);
     setProgress(0);
-    // Keep previous results visible
+    // Clear previous results
+    setChunks([]);
+    setFinalResult(null);
     
     // Clear any existing WebSocket
     if (wsRef.current) {
