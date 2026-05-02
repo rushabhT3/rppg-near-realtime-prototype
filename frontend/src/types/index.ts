@@ -6,6 +6,8 @@ export interface ChunkData {
   bpm: number | null;
   sqi: number | null;
   respiratory_rate: number | null;
+  latency_ms: number;
+  processing_speed: number;
 }
 
 export interface FinalResult {

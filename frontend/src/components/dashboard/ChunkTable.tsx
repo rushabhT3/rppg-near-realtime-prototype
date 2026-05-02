@@ -34,6 +34,8 @@ export const ChunkTable: React.FC<ChunkTableProps> = ({ chunks }) => {
               <th>HR (BPM)</th>
               <th>Resp (Br/m)</th>
               <th>SQI</th>
+              <th>Latency</th>
+              <th>Speed</th>
             </tr>
           </thead>
           <tbody>
@@ -46,6 +48,8 @@ export const ChunkTable: React.FC<ChunkTableProps> = ({ chunks }) => {
                 <td><span className="row-highlight">{chunk.bpm?.toFixed(1) ?? 'N/A'}</span></td>
                 <td><span className="row-highlight">{chunk.respiratory_rate?.toFixed(1) ?? 'N/A'}</span></td>
                 <td><span className="row-highlight">{chunk.sqi?.toFixed(2) ?? 'N/A'}</span></td>
+                <td><span className="row-highlight">{chunk.latency_ms?.toFixed(1) ?? 'N/A'}ms</span></td>
+                <td><span className="row-highlight">{chunk.processing_speed?.toFixed(2) ?? 'N/A'}x</span></td>
               </tr>
             ))}
           </tbody>

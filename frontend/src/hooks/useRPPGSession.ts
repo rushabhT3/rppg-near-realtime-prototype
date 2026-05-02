@@ -71,14 +71,15 @@ export const useRPPGSession = () => {
           headers: { 'Content-Type': file.type || 'video/mp4' },
         });
 
-        if (!uploadResponse.ok) throw new Error('GCS upload failed');
-
-        setSessionId(session_id);
-        connectWebSocket(session_id, object_name);
-        return;
+        if (uploadResponse.ok) {
+          setSessionId(session_id);
+          connectWebSocket(session_id, object_name);
+          return;
+        }
+        // GCS upload failed, fall through to direct upload
       }
 
-      // Fallback: direct upload (for local dev)
+      // Fallback: direct upload (for local dev or GCS unavailable)
       const formData = new FormData();
       formData.append('file', file);
 
