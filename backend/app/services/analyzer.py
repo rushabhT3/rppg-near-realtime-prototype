@@ -108,5 +108,15 @@ class SignalAnalyzer:
         )
 
 
-# Initialize global singleton analyzer
-analyzer = SignalAnalyzer()
+# Lazy singleton - initialized on first use, not at import time
+_analyzer: Optional["SignalAnalyzer"] = None
+_loading = False
+
+
+def get_analyzer() -> "SignalAnalyzer":
+    """Get the SignalAnalyzer singleton. Returns instance even if model is still loading."""
+    global _analyzer, _loading
+    if _analyzer is None and not _loading:
+        _loading = True
+        _analyzer = SignalAnalyzer()
+    return _analyzer

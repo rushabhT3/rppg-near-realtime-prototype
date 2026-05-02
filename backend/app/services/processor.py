@@ -1,13 +1,15 @@
 import time
 import asyncio
+from dataclasses import asdict
 from typing import List
 
 import cv2
 import numpy as np
 from fastapi import WebSocket
 
-from .analyzer import analyzer
+from .analyzer import get_analyzer
 from .sanitizer import DataSanitizer
+from app.models.biometric import BiometricChunk
 from app.core.logging import get_logger
 
 logger = get_logger()
@@ -21,8 +23,11 @@ class VideoProcessor:
         self.websocket = websocket
         self.chunk_size_sec = 5.0
         self.chunk_bpms: List[float] = []
+        self.chunk_sqis: List[float] = []
 
     async def run(self):
+        # Load model in thread pool to avoid blocking the event loop
+        analyzer = await asyncio.to_thread(get_analyzer)
         if not analyzer.ready:
             await self._fail("AI Engine offline")
             return
@@ -78,6 +83,9 @@ class VideoProcessor:
             logger.debug("VideoCapture released")
 
     async def _process_window(self, start: float, end: float, session_start: float):
+        chunk_wall_start = time.time()
+
+        analyzer = get_analyzer()
         await analyzer.wait_for_inference(end)
 
         model = analyzer.get_model()
@@ -85,25 +93,38 @@ class VideoProcessor:
         bvp, _ = model.bvp(start=start, end=end)
 
         bpm = metrics.get("hr")
+        sqi = float(metrics.get("SQI") or 0.0)
         if bpm is not None:
             self.chunk_bpms.append(float(bpm))
+            self.chunk_sqis.append(sqi)
 
-        chunk_data = {
-            "type": "chunk_update",
-            "chunk_index": int(start // self.chunk_size_sec),
-            "start_time": round(start, 1),
-            "end_time": round(end, 1),
-            "bpm": round(bpm, 1) if bpm is not None else None,
-            "sqi": round(float(metrics.get("SQI") or 0.0), 2),
-            "respiratory_rate": round(
+        chunk_wall_ms = round((time.time() - chunk_wall_start) * 1000, 1)
+        chunk_duration = end - start
+        processing_speed = (
+            round(chunk_duration / (chunk_wall_ms / 1000.0), 2)
+            if chunk_wall_ms > 0
+            else 0.0
+        )
+
+        chunk = BiometricChunk(
+            chunk_index=int(start // self.chunk_size_sec),
+            start_time=round(start, 1),
+            end_time=round(end, 1),
+            bpm=round(bpm, 1) if bpm is not None else None,
+            sqi=round(float(metrics.get("SQI") or 0.0), 2),
+            respiratory_rate=round(
                 float(analyzer.estimate_respiratory_rate(bvp, model.fps) or 0.0), 1
             ),
-        }
+            latency_ms=chunk_wall_ms,
+            processing_speed=processing_speed,
+        )
+        chunk_data = {"type": "chunk_update", **asdict(chunk)}
         await self.websocket.send_json(DataSanitizer.sanitize(chunk_data))
 
     async def _finalize(
         self, last_start: float, last_ts: float, total_frames: int, session_start: float
     ):
+        analyzer = get_analyzer()
         model = analyzer.get_model()
 
         # Send final partial chunk if significant
@@ -121,16 +142,38 @@ class VideoProcessor:
                 break
             await asyncio.sleep(0.5)
 
-        final_metrics = model.hr(return_hrv=False) or {}
+        final_metrics = model.hr(return_hrv=True) or {}
         bvp, _ = model.bvp()
 
+        # SQI-weighted median: filter out low-quality chunks (SQI < 0.3)
+        SQI_THRESHOLD = 0.3
+        filtered_bpms = [
+            bpm
+            for bpm, sqi in zip(self.chunk_bpms, self.chunk_sqis)
+            if sqi >= SQI_THRESHOLD
+        ]
         overall_bpm = (
-            float(np.median(self.chunk_bpms))
-            if self.chunk_bpms
-            else final_metrics.get("hr")
+            float(np.median(filtered_bpms))
+            if filtered_bpms
+            else (
+                float(np.median(self.chunk_bpms))
+                if self.chunk_bpms
+                else final_metrics.get("hr")
+            )
         )
 
         total_time = round(time.time() - session_start, 1)
+
+        hrv_data = final_metrics.get("hrv") or {}
+        hrv_summary = {}
+        if hrv_data:
+            hrv_summary = {
+                "sdnn": round(float(hrv_data.get("sdnn", 0)), 1),
+                "rmssd": round(float(hrv_data.get("rmssd", 0)), 1),
+                "lf_hf_ratio": round(float(hrv_data.get("LF/HF", 0)), 2),
+                "lf_power": round(float(hrv_data.get("LF", 0)), 2),
+                "hf_power": round(float(hrv_data.get("HF", 0)), 2),
+            }
 
         final_data = {
             "type": "final_result",
@@ -139,10 +182,18 @@ class VideoProcessor:
             "overall_respiratory_rate": round(
                 float(analyzer.estimate_respiratory_rate(bvp, model.fps) or 0.0), 1
             ),
+            "hrv": hrv_summary or None,
             "video_duration_sec": round(last_ts, 1),
             "total_processing_time_sec": total_time,
             "average_latency_ms": round(
-                float(final_metrics.get("latency") or 0.0) * 1000, 1
+                (
+                    (time.time() - session_start)
+                    / (last_ts / self.chunk_size_sec)
+                    * 1000
+                    if last_ts > 0
+                    else 0.0
+                ),
+                1,
             ),
         }
         await self.websocket.send_json(DataSanitizer.sanitize(final_data))

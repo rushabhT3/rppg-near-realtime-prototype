@@ -9,16 +9,16 @@ class Settings:
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
-    @property
-    def CORS_ALLOWED_ORIGINS(self) -> list[str]:
+    def __init__(self):
         env_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
         if env_origins:
             origins = [origin.strip() for origin in env_origins.split(",")]
-            return [origin for origin in origins if origin]
-
-        return [
-            "http://localhost:5173",
-        ]
+            self.CORS_ALLOWED_ORIGINS = [origin for origin in origins if origin]
+        else:
+            self.CORS_ALLOWED_ORIGINS = [
+                "https://rppg-near-realtime-prototype.vercel.app",
+                "http://localhost:5173",
+            ]
 
     @property
     def upload_dir(self) -> str:
