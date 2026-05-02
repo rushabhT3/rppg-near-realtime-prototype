@@ -15,13 +15,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     { label: 'Signal Quality Index', value: data.overall_sqi?.toFixed(2) ?? 'N/A', unit: data.overall_sqi ? 'SQI' : '' },
   ];
 
-  const hrvMetrics = data.hrv ? [
-    { label: 'SDNN', value: data.hrv.sdnn?.toFixed(1) ?? 'N/A', unit: data.hrv.sdnn ? 'ms' : '' },
-    { label: 'RMSSD', value: data.hrv.rmssd?.toFixed(1) ?? 'N/A', unit: data.hrv.rmssd ? 'ms' : '' },
-    { label: 'LF/HF Ratio', value: data.hrv.lf_hf_ratio?.toFixed(2) ?? 'N/A', unit: '' },
-    { label: 'LF Power', value: data.hrv.lf_power?.toFixed(2) ?? 'N/A', unit: data.hrv.lf_power ? 'ms²' : '' },
-    { label: 'HF Power', value: data.hrv.hf_power?.toFixed(2) ?? 'N/A', unit: data.hrv.hf_power ? 'ms²' : '' },
-  ] : [{ label: 'Heart Rate Variability', value: 'N/A', unit: 'Signal quality too low' }];
 
   const processingMetrics = [
     { label: 'Video Duration', value: data.video_duration_sec?.toFixed(1) ?? 'N/A', unit: data.video_duration_sec ? 's' : '' },
@@ -31,7 +24,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
 
   const sections = [
     { title: 'Vital Signs', items: vitalMetrics },
-    { title: 'Heart Rate Variability', items: hrvMetrics },
     { title: 'Processing Summary', items: processingMetrics },
   ].filter(s => s.items.length > 0);
 

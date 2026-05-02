@@ -142,7 +142,7 @@ class VideoProcessor:
                 break
             await asyncio.sleep(0.5)
 
-        final_metrics = model.hr(return_hrv=True) or {}
+        final_metrics = model.hr(return_hrv=False) or {}
         bvp, _ = model.bvp()
 
         # SQI-weighted median: filter out low-quality chunks (SQI < 0.3)
@@ -164,17 +164,6 @@ class VideoProcessor:
 
         total_time = round(time.time() - session_start, 1)
 
-        hrv_data = final_metrics.get("hrv") or {}
-        hrv_summary = {}
-        if hrv_data:
-            hrv_summary = {
-                "sdnn": round(float(hrv_data.get("sdnn", 0)), 1),
-                "rmssd": round(float(hrv_data.get("rmssd", 0)), 1),
-                "lf_hf_ratio": round(float(hrv_data.get("LF/HF", 0)), 2),
-                "lf_power": round(float(hrv_data.get("LF", 0)), 2),
-                "hf_power": round(float(hrv_data.get("HF", 0)), 2),
-            }
-
         final_data = {
             "type": "final_result",
             "overall_bpm": round(overall_bpm, 1) if overall_bpm is not None else None,
@@ -182,7 +171,6 @@ class VideoProcessor:
             "overall_respiratory_rate": round(
                 float(analyzer.estimate_respiratory_rate(bvp, model.fps) or 0.0), 1
             ),
-            "hrv": hrv_summary or None,
             "video_duration_sec": round(last_ts, 1),
             "total_processing_time_sec": total_time,
             "average_latency_ms": round(

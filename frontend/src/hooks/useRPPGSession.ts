@@ -16,6 +16,15 @@ export const useRPPGSession = () => {
 
   const connectWebSocket = useCallback((id: string, objectName?: string) => {
     setStatus('processing');
+    setError(null);
+    setProgress(0);
+    
+    // Clear any existing WebSocket
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    
     const wsUrl = objectName
       ? `${WS_URL}/ws/process/${id}?object_name=${encodeURIComponent(objectName)}`
       : `${WS_URL}/ws/process/${id}`;
@@ -35,6 +44,15 @@ export const useRPPGSession = () => {
         setStatus('done');
         setProgress(100);
         ws.close();
+        
+        // Reset for new input
+        setTimeout(() => {
+          setStatus('idle');
+          setChunks([]);
+          setFinalResult(null);
+          setProgress(0);
+          setError(null);
+        }, 3000);
       } else if (data.error) {
         setError(data.error);
         setStatus('error');
@@ -54,6 +72,12 @@ export const useRPPGSession = () => {
     setChunks([]);
     setFinalResult(null);
     setProgress(0);
+    
+    // Clear any existing WebSocket
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
 
     try {
       // Try GCS signed URL upload first (for Cloud Run)

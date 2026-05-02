@@ -10,20 +10,11 @@ export interface ChunkData {
   processing_speed: number;
 }
 
-export interface HRVData {
-  sdnn: number;
-  rmssd: number;
-  lf_hf_ratio: number;
-  lf_power: number;
-  hf_power: number;
-}
-
 export interface FinalResult {
   type: 'final_result';
   overall_bpm: number | null;
   overall_sqi: number | null;
   overall_respiratory_rate: number | null;
-  hrv: HRVData | null;
   total_processing_time_sec: number;
   average_latency_ms: number;
   video_duration_sec: number;
