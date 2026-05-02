@@ -45,11 +45,9 @@ export const useRPPGSession = () => {
         setProgress(100);
         ws.close();
         
-        // Reset for new input
+        // Keep results visible, reset only input state
         setTimeout(() => {
           setStatus('idle');
-          setChunks([]);
-          setFinalResult(null);
           setProgress(0);
           setError(null);
         }, 3000);
@@ -69,9 +67,8 @@ export const useRPPGSession = () => {
   const uploadVideo = async (file: File) => {
     setStatus('uploading');
     setError(null);
-    setChunks([]);
-    setFinalResult(null);
     setProgress(0);
+    // Keep previous results visible
     
     // Clear any existing WebSocket
     if (wsRef.current) {
