@@ -31,7 +31,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({ status, progress, 
         {status === 'idle' || status === 'error' ? (
           <>
             <Upload className="upload-icon" />
-            <p style={{ textAlign: 'center' }}>Drag & Drop Video<br/><span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>MP4, AVI, or MKV (Max 60s)</span></p>
+            <p style={{ textAlign: 'center' }}>Drag & Drop Video<br/><span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>MP4, AVI, or MKV</span></p>
           </>
         ) : (
           <div style={{ width: '100%', padding: '0 2rem' }}>
